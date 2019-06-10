@@ -35,7 +35,7 @@ array([962064.7   , 962072.6   , 962062.94  ,   2000.8098], dtype=float32)
 ## Detail
 | Loss | Value |
 |:-----|:-------|
-| MSE  |0.00095735234|
+| MSE  |9.6013e-4|
 
 ## Build
 First, let's create input data with public ticker API.  
