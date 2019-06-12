@@ -2,15 +2,15 @@ import json
 import urllib.request
 from datetime import datetime
 
-PATH = './input.csv'
-URL = 'https://public.bitbank.cc/btc_jpy/ticker'
+PATH = './input.csv'                             # output file name
+URL = 'https://public.bitbank.cc/btc_jpy/ticker' # Please change this url as you like
 
 req = urllib.request.Request(URL)
 writable = True
 
 
 def write(time, data):
-    with open(PATH, 'a') as f:
+    with open(PATH, 'a') as f: # After changing above url, you also need to fix header below
         f.write(time)
         f.write(',')
         f.write(data['sell'])
@@ -28,10 +28,13 @@ def write(time, data):
 
 
 if __name__ == '__main__':
+    '''
+    fetching ticker per 10 seconds
+    '''
 
-    # overwrite
+    # output file is overwritten even if it exists already
     with open(PATH, 'w') as f:
-        f.write('time,sell,buy,high,low,last,vol\n')
+        f.write('time,sell,buy,high,low,last,vol\n') # After changing above url, you also need to fix header below
 
     # Since consecutive values are required for input data,
     # this loop stops fetching if some error happens
@@ -44,7 +47,7 @@ if __name__ == '__main__':
             print(time)
             with urllib.request.urlopen(req) as res:
                 body = json.load(res)
-                data = body['data']
+                data = body['data'] # After changing above url, you also need to fix this depending on your url
                 write(time, data)
         elif t.second % 10 == 1 and not writable:
             writable = True

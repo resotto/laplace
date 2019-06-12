@@ -15,12 +15,12 @@ LOG_DIR = '.tensorboard/logs'
 MODEL_DIR = '.model'
 CHECKPOINT = '/model.ckpt'
 
-MAXLEN = 41
-INTERVAL = 10 # distance between the last input value and answer value
+MAXLEN = 41   # Time length of input data
+INTERVAL = 10 # Distance between the last input value and answer value
 N_IN = 4      # which means [sell, buy, last, vol]
-N_HIDDEN = 13
+N_HIDDEN = 13 # Number of hidden layers
 N_OUT = 4     # which means [sell, buy, last, vol]
-PATIENCE = 10
+PATIENCE = 10 # Max step of EarlyStopping
 
 def inference(x, n_in=None, maxlen=None, n_hidden=None, n_out=None):
     def weight_bariable(shape, name=None):
@@ -42,6 +42,7 @@ def inference(x, n_in=None, maxlen=None, n_hidden=None, n_out=None):
     outputs, _, _ = tf.nn.static_bidirectional_rnn(cell_forward, cell_backward, x, dtype=tf.float32)
 
     W = weight_bariable([n_hidden * 2, n_out], name='W')
+    tf.summary.histogram('W', W) # TensorBoard
     b = bias_variable([n_out], name='b')
     y = tf.matmul(outputs[-1], W) + b
     return y
@@ -176,9 +177,9 @@ def predict(arr_f):
     tf.reset_default_graph()
 
     # shape check
-    if arr_f.ndim != 2 or arr_f.shape[0] != 41 or arr_f.shape[1] !=  4:
-        print('input data is numpy array whose shape is (41, 4),')
-        print('which means values of [sell, buy, last, vol] x 41 rows')
+    if arr_f.ndim != 2 or arr_f.shape[0] != MAXLEN or arr_f.shape[1] != N_IN:
+        print('input data is numpy array whose shape is (MAXLEN, N_IN),')
+        print('which means values of [sell, buy, last, vol] x MAXLEN rows')
         return
 
     # normalization
@@ -200,7 +201,7 @@ def predict(arr_f):
     '''
 
     # reshape
-    arr_f = arr_f.reshape(1, 41, 4)
+    arr_f = arr_f.reshape(1, MAXLEN, N_IN)
 
     sess = tf.Session()
     tf.train.Saver().restore(sess, MODEL_DIR + CHECKPOINT) # restoring variables
@@ -258,8 +259,8 @@ if __name__ == '__main__':
         data.append(arr_f[i: i + MAXLEN])
         target.append(arr_f[i + MAXLEN + INTERVAL - 1])
 
-    X = np.array(data).reshape(len(data), MAXLEN, 4)
-    Y = np.array(target).reshape(len(data), 4)
+    X = np.array(data).reshape(len(data), MAXLEN, N_IN)
+    Y = np.array(target).reshape(len(data), N_OUT)
     N_train = int(len(data) * 0.9)
     N_validation = len(data) - N_train
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, Y, test_size=N_validation)

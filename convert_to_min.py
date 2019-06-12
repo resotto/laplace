@@ -1,20 +1,24 @@
 import csv
 import re
 
-PATH = 'input_min.csv'
+INPUT = 'input.csv'                                  # input file name
+PATH = 'input_min.csv'                               # output file name
 REGEX = '[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[\d]{2}:00' # YYYY-MM-DD hh:mm:00
 
 
 if __name__ == '__main__':
+    '''
+    converting time units of the input data from seconds to minutes.
+    '''
 
-    # overwrite
+    # output file is overwritten even if it exists already
     with open(PATH, 'w') as f:
-        f.write('time,sell,buy,high,low,last,vol\n')
+        f.write('time,sell,buy,high,low,last,vol\n') # please change this header depending on ticker
 
     pattern = re.compile(REGEX)
     val_per_min = []
 
-    with open('input.csv', newline='') as csvfile:
+    with open(INPUT, newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if pattern.match(row[0]): # row[0] equals "time"
