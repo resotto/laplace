@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Laplace predicts ticker rate.
+  Laplace predicts BTCUSD ticker values.
 </p>
 
 <p align="center">
@@ -45,9 +45,9 @@ array([ True,  True,  True,  True])
 ```
 
 ## Features
-- Predicting ticker values
-- Predicting rising of ticker values with boolean
-- Predicting falling of ticker values with
+- Predicting BTCUSD ticker values
+- Predicting rising of BTCUSD ticker values with boolean
+- Predicting falling of BTCUSD ticker values with boolean
 
 ## Loss & Accuracy
 - Final loss value:
@@ -65,7 +65,7 @@ array([ True,  True,  True,  True])
 
 ## Details
 - Predicted values are 10 minutes after the last input data (adjustable).
-- Input data is the past 41 minutes ticker value (adjustable).
+- Input data is the past 41 minutes ticker values (adjustable).
 - Input dimension and output dimension are 4 (adjustable).
 - Accuracy is calculated per 10 epochs (adjustable).
 
@@ -94,13 +94,14 @@ L44: write(time, body)                        # After changing above url, you al
 ```
 
 Now, you start fetching.  
-After running `create_csv.py`, `input.csv` will be created.
+After running `create_csv.py`, `input.csv` will be created to current directory.
 ```bash
 python3 create_csv.py
 ```
 
 Second, please convert time units of the data in `input.csv` from seconds to minutes.  
-After runnning `convert.py`, `input_min.csv` will be created, which is input data for learning.
+After runnning `convert.py`, `input_min.csv` will be created to current directory.  
+`input_min.csv` is input data for learning.
 ```bash
 python3 convert.py
 ```
