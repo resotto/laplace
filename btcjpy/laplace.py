@@ -19,14 +19,18 @@ SCALER     = '/scaler.save'
 
 MAXLEN           = 41                                     # Time series length of input data
 INTERVAL         = 10                                     # Time interval between the last input value and answer value
-N_IN             = 4                                      # which means [sell, buy, last, vol]
+N_IN             = 4                                      # Input dimension
 N_HIDDEN         = 13                                     # Number of hidden layers
-N_OUT            = 4                                      # which means [sell, buy, last, vol]
+N_OUT            = 4                                      # Output dimension
 LEARNING_RATE    = 0.0015                                 # Optimizer's learning rate
 PATIENCE         = 10                                     # Max step of EarlyStopping
 INPUT_VALUE_TYPE = ['sell', 'buy', 'last', 'vol']         # Input value type
-EPOCHS           = 1000                                   # Epochs
+EPOCHS           = 1500                                   # Epochs
 BATCH_SIZE       = 50                                     # Batch size
+TESTING_INTERVAL = 10                                     # Test interval
+
+RANDOM_LEARNING_ENABLED = True                            # Index of data determined randomly or not
+EARLY_STOPPING_ENABLED  = False                           # Early Stopping enabled or not
 
 
 def inference(x, n_in=None, maxlen=None, n_hidden=None, n_out=None):
@@ -39,7 +43,7 @@ def inference(x, n_in=None, maxlen=None, n_hidden=None, n_out=None):
         return tf.Variable(initial, name=name)
 
     # In order to adjust to specification of tf.nn.static_bidirectional_rnn,
-    # reshape format of recurrent data to (batch_size, input_dim)
+    # reshaping format of recurrent data to (batch_size, input_dim)
     x = tf.transpose(x, [1, 0, 2]) # Tensor: (?, MAXLEN, N_IN) => Tensor: (MAXLEN, ?, N_IN)
     x = tf.reshape(x, [-1, n_in])  # Tensor: (MAXLEN, ?, N_IN) => Tensor: (?, N_IN)
     x = tf.split(x, maxlen, 0)     # Tensor: (?, N_IN)         =>   list: len(x): MAXLEN
@@ -98,7 +102,7 @@ def get_input_data():
     ticker_data = []
     with open(INPUT_DATA, newline='') as csvfile:
 
-        # check whether header exists or not
+        # header check
         with open(INPUT_DATA, newline='') as tmp:
             header = tmp.readline()
             if re.match('\D+', header):
@@ -117,7 +121,7 @@ def check_answer(q, a, p, verbose=None):
     '''
     answer checking
 
-    checking correct answer with q(question), p(prediction), and a(answer).
+    checking correct answer with q(question), p(prediction), and a(answer)
 
     I. increasing case (a - q[-1] >= 0)
 
@@ -130,47 +134,45 @@ def check_answer(q, a, p, verbose=None):
             correct_counts += 1
     '''
 
+    diff_a_q = a - q[-1]
+    diff_p_q = p - q[-1]
+
     if verbose:
         print('-' * 10)
         print('question: ')
         print(q)
-        print('prediction: ', p)
-        print('answer:     ', a)
+        print()
+        print('prediction:                     ', p)
+        print('answer:                         ', a)
+        print()
+        print('answer     - question[-1] =     ', diff_a_q)
+        print('prediction - question[-1] =     ', diff_p_q)
+        print('answer     - prediction   =     ', a - p)
+        print()
 
-    diff_aq = a - q[-1]
-    if verbose:
-        print('diff between answer and question:     ', diff_aq)
-    diff_aq = diff_aq >= 0
-
-    diff_pq = p - q[-1]
-    if verbose:
-        print('diff between prediction and question: ', diff_pq)
-    diff_pq = diff_pq >= 0
-
-    if verbose:
-        diff_ap = a - p
-        print('diff between answer and prediction:   ', diff_ap)
-
+    diff_a_q = diff_a_q >= 0
+    diff_p_q = diff_p_q >= 0
     correct_counts = np.zeros(N_OUT)
 
     for i in range(len(correct_counts)):
-        if diff_aq[i]:          # increasing case
-            if diff_pq[i]:
+        if diff_a_q[i]:         # increasing case
+            if diff_p_q[i]:
                 if verbose:
-                    print(INPUT_VALUE_TYPE[i], 'is correct answer!')
+                    print(INPUT_VALUE_TYPE[i], 'is correct prediction!')
                 correct_counts[i] += 1
         else:                   # decreasing case
-            if not diff_pq[i]:
+            if not diff_p_q[i]:
                 if verbose:
-                    print(INPUT_VALUE_TYPE[i], 'is correct answer!')
+                    print(INPUT_VALUE_TYPE[i], 'is correct prediction!')
                 correct_counts[i] += 1
 
     return correct_counts
 
 
 def check_accuracy(correct_counts, number_of_tests, epoch):
-    accuracy = correct_counts * 100 / number_of_tests
-    if epoch >= 10:
+    accuracy = correct_counts * 100 / number_of_tests # %
+    if epoch > 0:
+        print()
         print('accuracy per 10 epoch:           {}'.format(accuracy))
     return accuracy
 
@@ -220,7 +222,7 @@ def predict(arr_f):
     '''
     prediction
     '''
-    # reshape
+    # reshaping
     arr_f = arr_f.reshape(1, MAXLEN, N_IN)
 
     sess = tf.Session()
@@ -240,9 +242,9 @@ def predict(arr_f):
 
 
 def predict_rising_from(arr_f):
-    tmp = predict(arr_f)
-    predicted = (tmp - arr_f[-1]) > 0
-    return predicted
+    predicted = predict(arr_f)
+    risingPrediction = (predicted - arr_f[-1]) > 0
+    return risingPrediction
 
 
 def predict_falling_from(arr_f):
@@ -298,7 +300,8 @@ if __name__ == '__main__':
     y = inference(x, n_in=N_IN, maxlen=MAXLEN, n_hidden=N_HIDDEN, n_out=N_OUT)
     loss = loss(y, t)
     train_step = training(loss)
-    early_stopping = EarlyStopping(patience=PATIENCE, verbose=1)
+    if EARLY_STOPPING_ENABLED:
+        early_stopping = EarlyStopping(patience=PATIENCE, verbose=1)
 
     '''
     learning
@@ -325,6 +328,8 @@ if __name__ == '__main__':
     for epoch in range(epochs):
 
         for i in range(n_batches):
+            if RANDOM_LEARNING_ENABLED:
+                i = np.random.randint(0, n_batches)
             start = i * batch_size
             end = start + batch_size
             sess.run(train_step, feed_dict={
@@ -339,19 +344,20 @@ if __name__ == '__main__':
         })
         file_writer.add_summary(summary, epoch)
 
-        if early_stopping.validate(val_loss):
-            break
+        if EARLY_STOPPING_ENABLED:
+            if early_stopping.validate(val_loss):
+                break
 
         '''
         testing
         '''
-        if epoch % 10 == 0:
+        if epoch % TESTING_INTERVAL == 0:
             print('-' * 10)
             correct_counts = np.zeros(N_OUT)
 
             for i in range(number_of_tests):
-                tmp = np.random.randint(0, len(validation_indices))
-                index = validation_indices.pop(tmp)
+                random_idx = np.random.randint(0, len(validation_indices))
+                index = validation_indices.pop(random_idx)
 
                 question = X_validation
                 answer = Y_validation

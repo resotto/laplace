@@ -18,97 +18,117 @@
 Please install [TensorFlow](https://www.tensorflow.org/) and [scikit-learn(sklearn)](https://scikit-learn.org/stable/) in advance.
 ```bash
 git clone git@github.com:resotto/laplace.git
-cd laplace/btcjpy
+cd laplace/btcusd
 python3
 ```
 ```python
 >>> import laplace as la
 >>> input = la.make_input_data()
+
+>>> type(input)
+<class 'numpy.ndarray'>
+
+>>> input.shape
+(41, 4)
+
 >>> predicted = la.predict(input)
 >>> predicted                         # following values are examples
-array([962064.7   , 962072.6   , 962062.94  ,   2000.8098], dtype=float32)
+array([ 9191.143,  9191.745,  9191.728, 19837.059], dtype=float32)
 
 >>> rising = la.predict_rising_from(input)
 >>> rising                            # following values are examples
-array([False, False, False,  True])
+array([False, False, False, False])
 
 >>> falling = la.predict_falling_from(input)
 >>> falling                           # following values are examples
-array([ True,  True,  True, False])
+array([ True,  True,  True,  True])
 ```
 
 ## Features
-- Predicting values of ticker
+- Predicting ticker values
 - Predicting rising of ticker values with boolean
-- Predicting falling of ticker values with boolean
+- Predicting falling of ticker values with
 
-  - Predicted values are 10 minutes after the last input data (adjustable).
-  - BTCJPY's laplace has already been learned with `input_min.csv`, while BTCUSD's one not.
-    **If you use BTCUSD's laplace, please follow [build instruction](#build).**
-
-## Details
-- Forward hidden layer is `tf.keras.layers.LSTMCell`.
-- Backward hidden layer is also `tf.keras.layers.LSTMCell`.
-- Entire hidden layer is `tf.nn.static_bidirectional_rnn`.
-- Optimizer is `Adam`.
-- Loss is calculated by `MSE`. Final value of loss is below:
+## Loss & Accuracy
+- Final loss value:
 
 | Loss |  Value  |
 |:-----|:--------|
-| MSE  |9.6013e-4|
+| MSE  |9.807e-4|
 
-- TensorBoard's logs are saved to `.tensorboard/logs`.
+- Final average of the last 10 accuracy(%):
+
+| bid |  ask  | last_price | volume |
+|:---:|:-----:|:----------:|:------:|
+| 85  |  85   | 80         | 50     |
+
+
+## Details
+- Predicted values are 10 minutes after the last input data (adjustable).
+- Input data is the past 41 minutes ticker value (adjustable).
+- Input dimension and output dimension are 4 (adjustable).
+- Accuracy is calculated per 10 epochs (adjustable).
+
+
+- Forward hidden layer is `tf.keras.layers.LSTMCell`.
+- Backward hidden layer is `tf.keras.layers.LSTMCell`.
+- Entire hidden layer is `tf.nn.static_bidirectional_rnn`.
+- Optimizer is `Adam`.
+- Loss is calculated by `MSE`.
+
+
 - Model's parameters are saved to `.model`.
+- TensorBoard's logs are saved to `.tensorboard/logs`.
 
 ## Build
-If you want to predict other types of ticker like BTCUSD, please following instruction.
-```bash
-cd -
-cd laplace/btcusd
-```
-
-First, let's create input data with `create_csv.py`.  
-You can change the URL of public ticker API.
+First, let's create input data.  
+You can change the URL of public ticker API in `create_csv.py`.
 ```python
 L5: URL    = 'https://api.bitfinex.com/v1/pubticker/btcusd' # Please change this url as you like
 ```
 
-If you changed URL, you also need to fix those parts:
+If you changed URL, you also need to fix those parts in `create_csv.py`:
 ```python
 L7: HEADER = 'time,bid,ask,last_price,volume' # Csv header. After changing above url, you may need to fix this
 L44: write(time, body)                        # After changing above url, you also need to fix this depending on ticker response
 ```
 
-Now, you start fetching.
+Now, you start fetching.  
+After running `create_csv.py`, `input.csv` will be created.
 ```bash
 python3 create_csv.py
 ```
 
-Second, please convert time units of the data from seconds to minutes.  
+Second, please convert time units of the data in `input.csv` from seconds to minutes.  
+After runnning `convert.py`, `input_min.csv` will be created, which is input data for learning.
 ```bash
 python3 convert.py
 ```
 
-Before learning model of laplace, you can adjust parameters in `laplace.py`.
+Third, before learning, you can adjust parameters in `laplace.py`.
 ```python
 MAXLEN           = 41                                     # Time series length of input data
 INTERVAL         = 10                                     # Time interval between the last input value and answer value
-N_IN             = 4                                      # which means [bid, ask, last_price, volume]
+N_IN             = 4                                      # Input dimension
 N_HIDDEN         = 13                                     # Number of hidden layers
-N_OUT            = 4                                      # which means [bid, ask, last_price, volume]
+N_OUT            = 4                                      # Output dimension
 LEARNING_RATE    = 0.0015                                 # Optimizer's learning rate
 PATIENCE         = 10                                     # Max step of EarlyStopping
 INPUT_VALUE_TYPE = ['bid', 'ask', 'last_price', 'volume'] # Input value type
-EPOCHS           = 1000                                   # Epochs
+EPOCHS           = 2500                                   # Epochs
 BATCH_SIZE       = 50                                     # Batch size
+TESTING_INTERVAL = 10                                     # Test interval
+
+RANDOM_LEARNING_ENABLED = True                            # Index of data determined randomly or not
+EARLY_STOPPING_ENABLED  = False                           # Early Stopping enabled or not
 ```
 
-Finally, please start laplace model learning.
+Finally, please start learning.
 ```bash
 python3 laplace.py
 ```
 
-After learning models, you also can check TensorBoard.
+After learning model, you also can check TensorBoard.
 ```bash
 tensorboard --logdir .tensorboard/logs/
 ```
